@@ -3,7 +3,7 @@ const router = express.Router();
 const Purchase = require("../models/Purchase");
 const Product = require("../models/ProductModel");
 const User = require("../models/userModel");
-const CustomProduct = require("../models/CustomProduct"); 
+const CustomProduct = require("../models/CustomProduct");
 
 // Create purchase
 router.post("/", async (req, res) => {
@@ -62,51 +62,40 @@ router.get("/user/:userId", async (req, res) => {
 
     const purchases = await Purchase.find({ userId }).sort({ createdAt: -1 });
 
-    const enrichedPurchases = [];
+    const enrichedPurchases = await Promise.all(
+      purchases.map(async (purchase) => {
+        const enrichedProducts = await Promise.all(
+          purchase.products.map(async (item) => {
+            // Try to find product in Product collection
+            let productDetails = await Product.findById(item.productId).lean();
 
-    for (const purchase of purchases) {
-      const enrichedProducts = [];
+            // If not found in Product, try CustomProduct
+            if (!productDetails) {
+              productDetails = await CustomProduct.findById(item.productId).lean();
+            }
 
-      for (const item of purchase.products) {
-        let productDetails = null;
+            // If still not found, fallback to null
+            if (!productDetails) productDetails = null;
 
-        // First try ProductModel (normal)
-        const normalProduct = await Product.findById(item.productId);
-        if (normalProduct) {
-          productDetails = {
-            name: normalProduct.name,
-            desc: normalProduct.desc,
-            url: normalProduct.url,
-          };
-        } else {
-          // Try customProduct
-          const customProduct = await CustomProduct.findById(item.productId);
-          if (customProduct) {
-            productDetails = {
-              name: customProduct.name,
-              desc: customProduct.desc,
-              url: customProduct.url,
+            return {
+              ...item._doc,
+              productId: productDetails,
             };
-          }
-        }
+          })
+        );
 
-        enrichedProducts.push({
-          ...item._doc,
-          productId: productDetails || null,
-        });
-      }
-
-      enrichedPurchases.push({
-        _id: purchase._id,
-        userId: purchase.userId,
-        location: purchase.location,
-        totalPrice: purchase.totalPrice,
-        createdAt: purchase.createdAt,
-        cancelTimeLeft: purchase.cancelTimeLeft,
-        products: enrichedProducts,
-        status: purchase.status || "Pending",
-      });
-    }
+        return {
+          _id: purchase._id,
+          userId: purchase.userId,
+          location: purchase.location,
+          totalPrice: purchase.totalPrice,
+          createdAt: purchase.createdAt,
+          cancelTimeLeft: purchase.cancelTimeLeft,
+          products: enrichedProducts,
+          status: purchase.status || "Pending",
+        };
+      })
+    );
 
     res.status(200).json(enrichedPurchases);
   } catch (err) {
@@ -114,6 +103,7 @@ router.get("/user/:userId", async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 });
+
 // Get product detail by ID
 router.get("/product/:productId", async (req, res) => {
   try {
