@@ -106,14 +106,13 @@ router.post("/login", async (req, res) => {
       expiresIn: "7d",
     });
 
- res.cookie("token", token, {
+res.cookie("token", token, {
   httpOnly: true,
-  secure: process.env.NODE_ENV === "production", // will be true in production
-  sameSite: "none", // required for cross-site cookies on HTTPS
+  secure: process.env.NODE_ENV === "production",
+  sameSite: "none",
   maxAge: 7 * 24 * 60 * 60 * 1000,
-});
+}).json({ msg: "Login successful" });
 
-      .json({ msg: "Login successful" });
   } catch (err) {
     res.status(500).json({ msg: "Login failed", error: err.message });
   }
