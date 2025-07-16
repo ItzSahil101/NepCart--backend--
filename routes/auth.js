@@ -28,7 +28,7 @@ router.post("/signup", async (req, res) => {
     const newUser = new User({
       userName,
       number,
-      password: hashedPassword,
+      password: password,
       location,
       verified: false,
     });
