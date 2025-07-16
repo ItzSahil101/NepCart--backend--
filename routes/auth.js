@@ -28,7 +28,7 @@ router.post("/signup", async (req, res) => {
     const newUser = new User({
       userName,
       number,
-      password: password,
+      password: hashedPassword,
       location,
       verified: false,
     });
@@ -88,9 +88,9 @@ router.post("/verify", async (req, res) => {
 });
 
 // ------------------ LOGIN ------------------
-// ------------------ LOGIN (Plain text password check - NOT SECURE) ------------------
 router.post("/login", async (req, res) => {
   const { number, password } = req.body;
+
   try {
     const user = await User.findOne({ number });
     if (!user) return res.status(404).json({ msg: "User not found" });
@@ -98,26 +98,38 @@ router.post("/login", async (req, res) => {
     if (!user.verified)
       return res.status(403).json({ msg: "Please verify your phone number first" });
 
-    // Direct plain-text password check (NOT RECOMMENDED)
-    if (password !== user.password) 
-      return res.status(401).json({ msg: "Incorrect password" });
+    // ✅ Secure password comparison using bcrypt
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) return res.status(401).json({ msg: "Incorrect password" });
 
+    // ✅ JWT token
     const token = jwt.sign({ _id: user._id }, process.env.JWTPRIVATEKEY, {
       expiresIn: "7d",
     });
 
-res.cookie("token", token, {
-  httpOnly: true,
-  secure: process.env.NODE_ENV === "production",
-  sameSite: "none",
-  maxAge: 7 * 24 * 60 * 60 * 1000,
-}).json({ msg: "Login successful" });
-
+    // ✅ Send cookie securely
+    res
+      .cookie("token", token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production", // true in production
+        sameSite: "None", // REQUIRED for cross-origin cookies!
+        maxAge: 7 * 24 * 60 * 60 * 1000,
+      })
+      .json({ msg: "Login successful" });
   } catch (err) {
     res.status(500).json({ msg: "Login failed", error: err.message });
   }
 });
 
+// ------------------ LOGOUT ------------------
+router.post("/logout", (req, res) => {
+  res.clearCookie("token", {
+    httpOnly: true,
+    sameSite: "None",
+    secure: process.env.NODE_ENV === "production",
+  });
+  return res.status(200).send({ msg: "Logged out successfully" });
+});
 
 // ------------------ SEND OTP (Forgot Password) ------------------
 router.post("/send-otp", async (req, res) => {
