@@ -88,6 +88,7 @@ router.post("/verify", async (req, res) => {
 });
 
 // ------------------ LOGIN ------------------
+// ------------------ LOGIN (Plain text password check - NOT SECURE) ------------------
 router.post("/login", async (req, res) => {
   const { number, password } = req.body;
   try {
@@ -97,8 +98,9 @@ router.post("/login", async (req, res) => {
     if (!user.verified)
       return res.status(403).json({ msg: "Please verify your phone number first" });
 
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) return res.status(401).json({ msg: "Incorrect password" });
+    // Direct plain-text password check (NOT RECOMMENDED)
+    if (password !== user.password) 
+      return res.status(401).json({ msg: "Incorrect password" });
 
     const token = jwt.sign({ _id: user._id }, process.env.JWTPRIVATEKEY, {
       expiresIn: "7d",
