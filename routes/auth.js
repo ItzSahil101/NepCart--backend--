@@ -3,11 +3,8 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const User = require("../models/userModel");
 const validateUser = require("../controllers/validateUser");
-const twilio = require("twilio");
 
 const router = express.Router();
-
-const client = twilio(process.env.TWILIO_SID, process.env.TWILIO_AUTH);
 
 // ------------------ SIGNUP ------------------
 router.post("/signup", async (req, res) => {
@@ -30,60 +27,35 @@ router.post("/signup", async (req, res) => {
       number,
       password: hashedPassword,
       location,
-      verified: false,
+      verified: false, // Will be updated after Firebase OTP verification
     });
 
     await newUser.save();
 
-    await client.verify
-      .services(process.env.TWILIO_VERIFY_SERVICE_SID)
-      .verifications.create({
-        to: number,
-        channel: "sms",
-      });
-
-    res.status(201).json({ msg: "Signup successful. OTP sent. Use /verify to confirm." });
+    res.status(201).json({ msg: "Signup successful. Please verify your phone number." });
   } catch (err) {
     res.status(500).json({ msg: "Signup failed", error: err.message });
   }
 });
 
-// ------------------ VERIFY ------------------
-router.post("/verify", async (req, res) => {
-  const { number, code } = req.body;
+// ------------------ MARK USER VERIFIED ------------------
+router.post("/mark-verified", async (req, res) => {
+  const { number } = req.body;
+
+  if (!number) return res.status(400).json({ msg: "Phone number is required" });
 
   try {
-    const user = await User.findOne({ number });
+    const formattedNumber = number.startsWith("+") ? number : "+" + number;
+
+    const user = await User.findOne({ number: formattedNumber });
     if (!user) return res.status(404).json({ msg: "User not found" });
-
-    const verification_check = await client.verify
-      .services(process.env.TWILIO_VERIFY_SERVICE_SID)
-      .verificationChecks.create({
-        to: number.startsWith("+") ? number : `+${number}`,
-        code,
-      });
-
-    if (verification_check.status !== "approved") {
-      return res.status(400).json({ msg: "Invalid verification code" });
-    }
 
     user.verified = true;
     await user.save();
 
-    const token = jwt.sign({ _id: user._id }, process.env.JWTPRIVATEKEY, {
-      expiresIn: "7d",
-    });
-
-    res
-      .cookie("token", token, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "Strict",
-        maxAge: 7 * 24 * 60 * 60 * 1000,
-      })
-      .json({ msg: "User verified successfully" });
+    res.json({ msg: "User verified successfully" });
   } catch (err) {
-    res.status(500).json({ msg: "Verification failed", error: err.message });
+    res.status(500).json({ msg: "Verification update failed", error: err.message });
   }
 });
 
@@ -98,21 +70,18 @@ router.post("/login", async (req, res) => {
     if (!user.verified)
       return res.status(403).json({ msg: "Please verify your phone number first" });
 
-    // ✅ Secure password comparison using bcrypt
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) return res.status(401).json({ msg: "Incorrect password" });
 
-    // ✅ JWT token
     const token = jwt.sign({ _id: user._id }, process.env.JWTPRIVATEKEY, {
       expiresIn: "7d",
     });
 
-    // ✅ Send cookie securely
     res
       .cookie("token", token, {
         httpOnly: true,
-        secure: process.env.NODE_ENV === "production", // true in production
-        sameSite: "None", // REQUIRED for cross-origin cookies!
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "None",
         maxAge: 7 * 24 * 60 * 60 * 1000,
       })
       .json({ msg: "Login successful" });
@@ -129,49 +98,6 @@ router.post("/logout", (req, res) => {
     secure: process.env.NODE_ENV === "production",
   });
   return res.status(200).send({ msg: "Logged out successfully" });
-});
-
-// ------------------ SEND OTP (Forgot Password) ------------------
-router.post("/send-otp", async (req, res) => {
-  const { number } = req.body;
-
-  try {
-    const user = await User.findOne({ number });
-    if (!user) return res.status(404).json({ msg: "User not found" });
-
-    await client.verify
-      .services(process.env.TWILIO_VERIFY_SERVICE_SID)
-      .verifications.create({
-        to: number.startsWith("+") ? number : `+${number}`,
-        channel: "sms",
-      });
-
-    res.json({ msg: "OTP sent successfully" });
-  } catch (err) {
-    res.status(500).json({ msg: "Failed to send OTP", error: err.message });
-  }
-});
-
-// ------------------ VERIFY OTP (Forgot Password) ------------------
-router.post("/verify-otp", async (req, res) => {
-  const { number, otp } = req.body;
-
-  try {
-    const verification = await client.verify
-      .services(process.env.TWILIO_VERIFY_SERVICE_SID)
-      .verificationChecks.create({
-        to: number.startsWith("+") ? number : `+${number}`,
-        code: otp,
-      });
-
-    if (verification.status === "approved") {
-      res.json({ msg: "OTP verified" });
-    } else {
-      res.status(400).json({ msg: "Invalid OTP" });
-    }
-  } catch (err) {
-    res.status(500).json({ msg: "OTP verification failed", error: err.message });
-  }
 });
 
 // ------------------ RESET PASSWORD ------------------
