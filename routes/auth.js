@@ -67,8 +67,9 @@ router.post("/login", async (req, res) => {
     const user = await User.findOne({ number });
     if (!user) return res.status(404).json({ msg: "User not found" });
 
-    if (!user.verified)
-      return res.status(403).json({ msg: "Please verify your phone number first" });
+    // ✅ Removed this verification check:
+    // if (!user.verified)
+    //   return res.status(403).json({ msg: "Please verify your phone number first" });
 
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) return res.status(401).json({ msg: "Incorrect password" });
@@ -89,6 +90,7 @@ router.post("/login", async (req, res) => {
     res.status(500).json({ msg: "Login failed", error: err.message });
   }
 });
+
 
 // ------------------ LOGOUT ------------------
 router.post("/logout", (req, res) => {
