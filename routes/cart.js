@@ -6,7 +6,7 @@ const Product = require("../models/ProductModel");
 const JWT_SECRET = process.env.JWTPRIVATEKEY;
 
 // Middleware to extract user from cookie
-const getUserFromToken = async (req) => {
+const getUserFromToken = async (req) => {1
   const token = req.cookies.token;
   if (!token) throw new Error("No token provided");
 

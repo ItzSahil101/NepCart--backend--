@@ -11,7 +11,7 @@ const app = express();
 app.use(express.json());
 app.use(
   cors({
-    origin: "https://nepcart.vercel.app", // or your frontend domain
+    origin: ["https://nepcart.vercel.app", "https://nepmartz.vercel.app"], //frontend domain
     credentials: true,
   })
 );
