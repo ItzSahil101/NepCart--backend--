@@ -3,6 +3,7 @@ const router = express.Router();
 const Purchase = require("../models/Purchase");
 const Product = require("../models/ProductModel");
 const User = require("../models/userModel");
+const CustomProduct = require("../models/CustomProduct");
 
 // Create purchase
 router.post("/", async (req, res) => {
@@ -59,11 +60,44 @@ router.get("/user/:userId", async (req, res) => {
   try {
     const { userId } = req.params;
 
-    const purchases = await Purchase.find({ userId })
-      .populate("products.productId")  // populate each productId inside products array with full product info (image, description, etc)
-      .sort({ createdAt: -1 });
+    const purchases = await Purchase.find({ userId }).sort({ createdAt: -1 });
 
-    res.status(200).json(purchases);
+    const enrichedPurchases = await Promise.all(
+      purchases.map(async (purchase) => {
+        const enrichedProducts = await Promise.all(
+          purchase.products.map(async (item) => {
+            // Try to find product in Product collection
+            let productDetails = await Product.findById(item.productId).lean();
+
+            // If not found in Product, try CustomProduct
+            if (!productDetails) {
+              productDetails = await CustomProduct.findById(item.productId).lean();
+            }
+
+            // If still not found, fallback to null
+            if (!productDetails) productDetails = null;
+
+            return {
+              ...item._doc,
+              productId: productDetails,
+            };
+          })
+        );
+
+        return {
+          _id: purchase._id,
+          userId: purchase.userId,
+          location: purchase.location,
+          totalPrice: purchase.totalPrice,
+          createdAt: purchase.createdAt,
+          cancelTimeLeft: purchase.cancelTimeLeft,
+          products: enrichedProducts,
+          status: purchase.status || "Pending",
+        };
+      })
+    );
+
+    res.status(200).json(enrichedPurchases);
   } catch (err) {
     console.error("Error fetching user purchases:", err);
     res.status(500).json({ message: "Server error" });
