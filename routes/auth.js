@@ -65,16 +65,21 @@ router.post("/login", async (req, res) => {
   const { number, password } = req.body;
 
   try {
-    const user = await User.findOne({ number });
+    // normalize number so users can send with or without leading +
+    let lookupNumber = number;
+    if (typeof lookupNumber !== "string") lookupNumber = lookupNumber.toString();
+    if (!lookupNumber.startsWith("+")) lookupNumber = "+" + lookupNumber;
+
+    const user = await User.findOne({ number: lookupNumber });
     if (!user) return res.status(404).json({ msg: "User not found" });
 
     // ✅ Removed this verification check:
     // if (!user.verified)
     //   return res.status(403).json({ msg: "Please verify your phone number first" });
 
-    // Direct plain-text password check (NOT RECOMMENDED)
-    if (password !== user.password) 
-      return res.status(401).json({ msg: "Incorrect password" });
+    // Compare provided password with hashed password
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) return res.status(401).json({ msg: "Incorrect password" });
 
     const token = jwt.sign({ _id: user._id }, process.env.JWTPRIVATEKEY, {
       expiresIn: "7d",
