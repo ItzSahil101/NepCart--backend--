@@ -34,6 +34,10 @@ const purchaseSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
+    cmsg: {
+      type: String,
+      default: "",
+    },
     totalPrice: {
       type: Number,
       required: true,

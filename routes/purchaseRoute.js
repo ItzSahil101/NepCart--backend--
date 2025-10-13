@@ -8,7 +8,7 @@ const CustomProduct = require("../models/CustomProduct");
 // Create purchase
 router.post("/", async (req, res) => {
   try {
-    const { productId, userId, location, totalPrice, products } = req.body;
+    const { productId, userId, location, totalPrice, products, cmsg } = req.body;
 
     if (!productId || !userId || !location || !totalPrice || !products?.length) {
       return res.status(400).json({ message: "Missing required fields." });
@@ -20,6 +20,7 @@ router.post("/", async (req, res) => {
       location,
       totalPrice,
       products,
+      cmsg,
     });
 
     const savedPurchase = await newPurchase.save();
