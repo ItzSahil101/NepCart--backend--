@@ -57,15 +57,22 @@ router.get("/product/:id", async (req, res) => {
 });
 
 //See total orders num
+// See total orders num
 router.get("/total-orders", async (req, res) => {
   try {
-    const totalOrders = await PurchaseModel.countDocuments(); 
+    // Option 1: estimatedDocumentCount (fast, does not consider query filters)
+    const totalOrders = await PurchaseModel.estimatedDocumentCount();
+
+    // Option 2: find all and get length (slightly slower, but guaranteed accurate)
+    // const totalOrders = (await PurchaseModel.find({})).length;
+
     res.status(200).json({ totalOrders });
   } catch (error) {
     console.error("Error fetching total orders:", error);
     res.status(500).json({ message: "Failed to fetch total orders" });
   }
 });
+
 
 
 module.exports = router;
