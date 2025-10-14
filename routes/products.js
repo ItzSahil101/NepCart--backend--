@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 const Product = require("../models/ProductModel");
 const User = require("../models/userModel");
+const ProductModel = require("../models/ProductModel");
 
 // ========================
 // GET all products
@@ -34,28 +35,27 @@ router.get("/top-users", async (req, res) => {
 
 // ========================
 // GET product by ID (works for Product collection or embedded in orders)
+// GET product by ID
 router.get("/product/:id", async (req, res) => {
   try {
     const { id } = req.params;
+    console.log("Fetching product with ID:", id);
 
-    // 1️⃣ Try to find in Product collection
-    let product = await Product.findOne({ productId: id });
-    if (product) return res.status(200).json(product);
+    // Find product by _id in Product collection
+    const product = await ProductModel.findById(id);
 
-    // 2️⃣ If not found, try to get from any order's products array
-    const order = await Order.findOne({ productId: id });
-    if (order && order.products && order.products.length > 0) {
-      // Return first product from array (adjust if multiple)
-      return res.status(200).json(order.products[0]);
+    if (!product) {
+      return res.status(404).json({ message: "Product not found" });
     }
 
-    // 3️⃣ Not found anywhere
-    return res.status(404).json({ message: "Product not found" });
+    // Send product data as response
+    res.status(200).json(product);
   } catch (error) {
     console.error("Error fetching product:", error);
     return res.status(500).json({ message: "Failed to fetch product" });
   }
 });
+
 
 
 module.exports = router;
