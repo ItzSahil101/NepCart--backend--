@@ -34,13 +34,14 @@ router.get("/top-users", async (req, res) => {
 
 // ========================
 // ✅ GET product by ID (for frontend)
-// ========================
 router.get("/product/:id", async (req, res) => {
   try {
     const { id } = req.params;
+    console.log("Looking for product ID:", id); // add this
     const product = await Product.findById(id);
 
     if (!product) {
+      console.log("Product not found!"); // add this
       return res.status(404).json({ message: "Product not found" });
     }
 
@@ -50,5 +51,6 @@ router.get("/product/:id", async (req, res) => {
     res.status(500).json({ message: "Failed to fetch product" });
   }
 });
+
 
 module.exports = router;
