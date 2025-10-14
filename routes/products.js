@@ -3,6 +3,7 @@ const router = express.Router();
 const Product = require("../models/ProductModel");
 const User = require("../models/userModel");
 const ProductModel = require("../models/ProductModel");
+const PurchaseModel = require("../models/PurchaseModel");
 
 // ========================
 // GET all products
@@ -34,7 +35,6 @@ router.get("/top-users", async (req, res) => {
 });
 
 // ========================
-// GET product by ID (works for Product collection or embedded in orders)
 // GET product by ID
 router.get("/product/:id", async (req, res) => {
   try {
@@ -53,6 +53,17 @@ router.get("/product/:id", async (req, res) => {
   } catch (error) {
     console.error("Error fetching product:", error);
     return res.status(500).json({ message: "Failed to fetch product" });
+  }
+});
+
+//See total orders num
+router.get("/total-orders", async (req, res) => {
+  try {
+    const totalOrders = await PurchaseModel.countDocuments(); 
+    res.status(200).json({ totalOrders });
+  } catch (error) {
+    console.error("Error fetching total orders:", error);
+    res.status(500).json({ message: "Failed to fetch total orders" });
   }
 });
 
