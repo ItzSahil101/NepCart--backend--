@@ -33,15 +33,22 @@ router.get("/top-users", async (req, res) => {
 });
 
 // ========================
-// ✅ GET product by ID (for frontend)
+// GET product by ID (search by productId field)
 router.get("/product/:id", async (req, res) => {
   try {
     const { id } = req.params;
-    console.log("Looking for product ID:", id); // add this
-    const product = await Product.findById(id);
+    console.log("Looking for productId:", id);
+
+    // Search by productId field first
+    let product = await Product.findOne({ productId: id });
+
+    // fallback: try findById if productId field not found
+    if (!product) {
+      product = await Product.findById(id);
+    }
 
     if (!product) {
-      console.log("Product not found!"); // add this
+      console.log("Product not found!");
       return res.status(404).json({ message: "Product not found" });
     }
 
