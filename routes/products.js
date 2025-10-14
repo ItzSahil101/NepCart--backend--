@@ -33,29 +33,27 @@ router.get("/top-users", async (req, res) => {
 });
 
 // ========================
-// GET product by ID (search by productId field)
+// GET product by ID (works for Product collection or embedded in orders)
 router.get("/product/:id", async (req, res) => {
   try {
     const { id } = req.params;
-    console.log("Looking for productId:", id);
 
-    // Search by productId field first
+    // 1️⃣ Try to find in Product collection
     let product = await Product.findOne({ productId: id });
+    if (product) return res.status(200).json(product);
 
-    // fallback: try findById if productId field not found
-    if (!product) {
-      product = await Product.findById(id);
+    // 2️⃣ If not found, try to get from any order's products array
+    const order = await Order.findOne({ productId: id });
+    if (order && order.products && order.products.length > 0) {
+      // Return first product from array (adjust if multiple)
+      return res.status(200).json(order.products[0]);
     }
 
-    if (!product) {
-      console.log("Product not found!");
-      return res.status(404).json({ message: "Product not found" });
-    }
-
-    res.status(200).json(product);
+    // 3️⃣ Not found anywhere
+    return res.status(404).json({ message: "Product not found" });
   } catch (error) {
     console.error("Error fetching product:", error);
-    res.status(500).json({ message: "Failed to fetch product" });
+    return res.status(500).json({ message: "Failed to fetch product" });
   }
 });
 
