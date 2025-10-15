@@ -1,9 +1,10 @@
+// routes/updateMsg.js
 const express = require("express");
 const router = express.Router();
 const UpdateMsg = require("../models/Update");
 
-
-router.post("/fetch", async (req, res) => {
+// GET request instead of POST
+router.get("/fetch", async (req, res) => {
   try {
     const updates = await UpdateMsg.find();
     res.json(updates);
@@ -12,6 +13,5 @@ router.post("/fetch", async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
-
 
 module.exports = router;
