@@ -27,6 +27,7 @@ app.use("/api/cart", require("./routes/cart"));
 app.use("/purchase", purchase)
 app.use("/custom", require("./routes/CustomProductRoute"))
 app.use("/orderc", require("./routes/customOrder"))
+app.use("/api/updatemsg", require("./routes/updateMsg"));
 
 mongoose
   .connect(process.env.MONGO_URI)
